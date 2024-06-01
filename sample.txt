@@ -1,0 +1,396 @@
+Below are several sample user questions related to the MongoDB document provided, 
+and the corresponding MongoDB aggregation pipeline queries in json that can be used to fetch the desired data.
+Use them wisely.
+
+Question 1: If a user name John Doe ask's, what can I have fast and tasty.
+
+Query:
+json
+[
+    { "$match": { "name": "John Doe" } },
+    { "$unwind": "$addresses" },
+    { 
+        "$lookup": {
+            "from": "restaurants",
+            "let": { "userLocation": "$addresses.googlePin" },
+            "pipeline": [
+                {
+                    "$addFields": {
+                        "distance": {
+                            "$sqrt": {
+                                "$sum": [
+                                    { "$pow": [{ "$subtract": [{ "$arrayElemAt": ["$googlePin.coordinates", 0] }, { "$arrayElemAt": [{ "$map": { "input": { "$split": ["$$userLocation", ","] }, "as": "coord", "in": { "$convert": { "input": "$$coord", "to": "double" } } } }, 0] }] }, 2] },
+                                    { "$pow": [{ "$subtract": [{ "$arrayElemAt": ["$googlePin.coordinates", 1] }, { "$arrayElemAt": [{ "$map": { "input": { "$split": ["$$userLocation", ","] }, "as": "coord", "in": { "$convert": { "input": "$$coord", "to": "double" } } } }, 1] }] }, 2] }
+                                ]
+                            }
+                        }
+                    }
+                },
+                { "$sort": { "distance": 1 } },
+                { "$limit": 1 }
+            ],
+            "as": "nearestRestaurant"
+        }
+    },
+    { "$unwind": "$nearestRestaurant" },
+    { "$unwind": "$nearestRestaurant.menu" },
+    { 
+        "$group": {
+            "_id": "$_id",
+            "nearestRestaurant": { "$first": "$nearestRestaurant" },
+            "suggestedDishes": { "$push": "$nearestRestaurant.menu" }
+        }
+    },
+    { 
+        "$project": {
+            "nearestRestaurant": 1,
+            "suggestedDishes": { "$slice": ["$suggestedDishes", 4] }
+        }
+    }
+]
+
+
+
+Question 2: If user ask's What is price of Gulab Jamun?
+
+Query:
+json
+[
+    { "$match": { "name": "John Doe" } },
+    { "$unwind": "$addresses" },
+    { 
+        "$lookup": {
+            "from": "restaurants",
+            "let": { "userLocation": "$addresses.googlePin" },
+            "pipeline": [
+                {
+                    "$addFields": {
+                        "distance": {
+                            "$sqrt": {
+                                "$sum": [
+                                    { "$pow": [{ "$subtract": [{ "$arrayElemAt": ["$googlePin.coordinates", 0] }, { "$arrayElemAt": [{ "$map": { "input": { "$split": ["$$userLocation", ","] }, "as": "coord", "in": { "$convert": { "input": "$$coord", "to": "double" } } } }, 0] }] }, 2] },
+                                    { "$pow": [{ "$subtract": [{ "$arrayElemAt": ["$googlePin.coordinates", 1] }, { "$arrayElemAt": [{ "$map": { "input": { "$split": ["$$userLocation", ","] }, "as": "coord", "in": { "$convert": { "input": "$$coord", "to": "double" } } } }, 1] }] }, 2] }
+                                ]
+                            }
+                        }
+                    }
+                },
+                { "$sort": { "distance": 1 } },
+                { "$limit": 1 }
+            ],
+            "as": "nearestRestaurant"
+        }
+    },
+    { "$unwind": "$nearestRestaurant" },
+    { "$unwind": "$nearestRestaurant.menu" },
+    { "$match": { "nearestRestaurant.menu.dish": "Gulab Jamun" } },
+    { "$project": {
+        "_id": 0,
+        "dish": "$nearestRestaurant.menu.dish",
+        "price": "$nearestRestaurant.menu.price",
+        "portion": "$nearestRestaurant.menu.portion"
+    }}
+]
+
+
+
+Question 3:Suggest me something non veg?
+
+Query:
+json
+[
+    { "$match": { "name": "John Doe" } },
+    { "$unwind": "$addresses" },
+    {
+        "$lookup": {
+            "from": "restaurants",
+            "let": { "userLocation": "$addresses.googlePin", "userNonVegDays": "$nonVegDays" },
+            "pipeline": [
+                {
+                    "$addFields": {
+                        "distance": {
+                            "$sqrt": {
+                                "$sum": [
+                                    { "$pow": [{ "$subtract": [{ "$arrayElemAt": ["$googlePin.coordinates", 0] }, { "$convert": { "input": { "$arrayElemAt": [{ "$split": ["$$userLocation", ","] }, 0] }, "to": "double" } }] }, 2] },
+                                    { "$pow": [{ "$subtract": [{ "$arrayElemAt": ["$googlePin.coordinates", 1] }, { "$convert": { "input": { "$arrayElemAt": [{ "$split": ["$$userLocation", ","] }, 1] }, "to": "double" } }] }, 2] }
+                                ]
+                            }
+                        }
+                    }
+                },
+                { "$sort": { "distance": 1 } },
+                { "$limit": 1 }
+            ],
+            "as": "nearestRestaurant"
+        }
+    },
+    { "$unwind": "$nearestRestaurant" },
+    { "$unwind": "$nearestRestaurant.menu" },
+    {
+        "$match": {
+            "$expr": {
+                "$and": [
+                    { "$in": [{ "$dayOfWeek": "$$NOW" }, "$userNonVegDays"] },
+                    { "$in": [{ "$toLower": "$nearestRestaurant.menu.dish" }, ["chicken", "mutton", "fish", "egg", "beef", "pork"]] }
+                ]
+            }
+        }
+    },
+    { "$limit": 4 },
+    { "$project": { "nearestRestaurant.menu.dish": 1, "nearestRestaurant.menu.price": 1, "nearestRestaurant.name": 1, "distance": 1 } }
+]
+
+
+Question 4: Suggest me something in veg.
+
+Query:
+json
+[
+    { "$match": { "name": "John Doe" } },
+    { "$unwind": "$addresses" },
+    {
+        "$lookup": {
+            "from": "restaurants",
+            "let": { "userLocation": "$addresses.googlePin", "userNonVegDays": "$nonVegDays", "userVegDays": "$vegDays" },
+            "pipeline": [
+                {
+                    "$addFields": {
+                        "distance": {
+                            "$sqrt": {
+                                "$sum": [
+                                    { "$pow": [{ "$subtract": [{ "$arrayElemAt": ["$googlePin.coordinates", 0] }, { "$arrayElemAt": [{ "$convert": { "input": { "$arrayElemAt": [{ "$split": ["$$userLocation", ","] }, 0] }, "to": "double" } } }] }, 2] },
+                                    { "$pow": [{ "$subtract": [{ "$arrayElemAt": ["$googlePin.coordinates", 1] }, { "$arrayElemAt": [{ "$convert": { "input": { "$arrayElemAt": [{ "$split": ["$$userLocation", ","] }, 1] }, "to": "double" } } }] }, 2] }
+                                ]
+                            }
+                        }
+                    }
+                },
+                { "$sort": { "distance": 1 } },
+                { "$limit": 1 }
+            ],
+            "as": "nearestRestaurant"
+        }
+    },
+    { "$unwind": "$nearestRestaurant" },
+    { "$unwind": "$nearestRestaurant.menu" },
+    {
+        "$facet": {
+            "nonVegDishes": [
+                {
+                    "$match": {
+                        "$expr": {
+                            "$and": [
+                                { "$in": [{ "$dayOfWeek": "$$NOW" }, "$$userNonVegDays"] },
+                                { "$in": [{ "$toLower": "$nearestRestaurant.menu.dish" }, ["chicken", "mutton", "fish", "egg", "beef", "pork"]] }
+                            ]
+                        }
+                    }
+                },
+                { "$limit": 4 }
+            ],
+            "vegDishes": [
+                {
+                    "$match": {
+                        "$expr": {
+                            "$and": [
+                                { "$in": [{ "$dayOfWeek": "$$NOW" }, "$$userVegDays"] },
+                                { "$not": { "$in": [{ "$toLower": "$nearestRestaurant.menu.dish" }, ["chicken", "mutton", "fish", "egg", "beef", "pork"]] } }
+                            ]
+                        }
+                    }
+                },
+                { "$limit": 4 }
+            ]
+        }
+    },
+    {
+        "$project": {
+            "suggestions": {
+                "$cond": {
+                    "if": { "$gt": [{ "$size": "$nonVegDishes" }, 0] },
+                    "then": "$nonVegDishes",
+                    "else": "$vegDishes"
+                }
+            }
+        }
+    }
+]
+
+
+Question 5: Ask user to confirm the and save the order to order collection.
+
+Query:
+json
+[
+  {
+    "$match": { "name": "John Doe" },
+    "$lookup": {
+        "from": "restaurants",
+        "let": { "userLocation": "$addresses.googlePin" },
+        "pipeline": [
+            {
+                "$addFields": {
+                    "distance": {
+                        "$sqrt": {
+                            "$sum": [
+                                {
+                                    "$pow": [
+                                        {
+                                            "$subtract": [
+                                                { "$arrayElemAt": ["$googlePin.coordinates", 0] },
+                                                {
+                                                    "$arrayElemAt": [
+                                                        {
+                                                            "$convert": {
+                                                                "input": { "$arrayElemAt": [{ "$split": ["$$userLocation", ","] }, 0] },
+                                                                "to": "double"
+                                                            }
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        },
+                                        2
+                                    ]
+                                },
+                                {
+                                    "$pow": [
+                                        {
+                                            "$subtract": [
+                                                { "$arrayElemAt": ["$googlePin.coordinates", 1] },
+                                                {
+                                                    "$arrayElemAt": [
+                                                        {
+                                                            "$convert": {
+                                                                "input": { "$arrayElemAt": [{ "$split": ["$$userLocation", ","] }, 1] },
+                                                                "to": "double"
+                                                            }
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        },
+                                        2
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            { "$sort": { "distance": 1 } },
+            { "$limit": 1 }
+        ],
+        "as": "nearestRestaurant"
+    },
+    "$unwind": "$nearestRestaurant",
+    "$project": {
+        "user_id": "$_id",
+        "restaurant_id": "$nearestRestaurant._id",
+        "dishes": "$nearestRestaurant.menu",
+        "delivery_address": "$addresses.address",
+        "google_pin_user": "$addresses.googlePin",
+        "google_pin_restaurant": "$nearestRestaurant.googlePin",
+        "distance_kms": {
+            "$sqrt": {
+                "$sum": [
+                    {
+                        "$pow": [
+                            {
+                                "$subtract": [
+                                    { "$arrayElemAt": ["$nearestRestaurant.googlePin.coordinates", 0] },
+                                    {
+                                        "$arrayElemAt": [
+                                            {
+                                                "$convert": {
+                                                    "input": { "$arrayElemAt": [{ "$split": ["$addresses.googlePin", ","] }, 0] },
+                                                    "to": "double"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            2
+                        ]
+                    },
+                    {
+                        "$pow": [
+                            {
+                                "$subtract": [
+                                    { "$arrayElemAt": ["$nearestRestaurant.googlePin.coordinates", 1] },
+                                    {
+                                        "$arrayElemAt": [
+                                            {
+                                                "$convert": {
+                                                    "input": { "$arrayElemAt": [{ "$split": ["$addresses.googlePin", ","] }, 1] },
+                                                    "to": "double"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            2
+                        ]
+                    }
+                ]
+            }
+        },
+        "upi_acknowledgement_id": "upi_ack_id_here",
+        "upi_status": "success",
+        "order_timestamp": { "$toDate": "$$NOW" }
+    },
+    "$merge": {
+        "into": "orders",
+        "whenMatched": "fail",
+        "whenNotMatched": "insert"
+    }
+  }
+]
+
+Question 6: Tell me about my previous order.
+Query:
+json
+[
+    { "$match": { "name": "John Doe" } },
+    { "$lookup": {
+        "from": "orders",
+        "localField": "_id",
+        "foreignField": "user_id",
+        "as": "orderDetails"
+    }},
+    { "$unwind": "$orderDetails" },
+    { "$sort": { "orderDetails.order_timestamp": -1 } },  // Sort by most recent orders
+    { "$project": {
+        "_id": 0,
+        "orderDetails": 1
+    }}
+]
+
+Question 7: Tell me about my current order.
+Query:
+json
+[
+    { "$match": { "name": "John Doe" } },
+    { "$lookup": {
+        "from": "orders",
+        "localField": "_id",
+        "foreignField": "user_id",
+        "as": "orderDetails"
+    }},
+    { "$unwind": "$orderDetails" },
+    { "$sort": { "orderDetails.order_timestamp": -1 } },  // Sort by most recent orders
+    { "$limit": 1 },  // Limit to the most recent order
+    { "$project": {
+        "_id": 0,
+        "orderDetails": 1
+    }}
+]
+
+Question 8:
+Query:
+
+
+Each of these queries is designed to run within MongoDB's aggregation framework to extract specific information based on the user's questions.
+ The `$project` step is used to format the output to include only relevant fields. 
