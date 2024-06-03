@@ -1,8 +1,12 @@
 Below are several sample user questions related to the MongoDB document provided, 
 and the corresponding MongoDB aggregation pipeline queries in json that can be used to fetch the desired data.
 Use them wisely.
+Note: When a query contains "user_name," replace it with the actual user's name by first asking for their contact or email and checking if it is present in the database.
+If the contact or email exists, retrieve the user's name and replace "user_name" with it.
+If the details are not found,return a query in json telling "you are not registered".
+  
 
-Question 1: If a user name John Doe ask's, what can I have fast and tasty.
+Question 1: John Doe, what can I have fast and tasty.
 
 Query:
 json
@@ -51,12 +55,12 @@ json
 
 
 
-Question 2: If user ask's What is price of Gulab Jamun?
+Question 2: What is price of Gulab Jamun?
 
 Query:
 json
 [
-    { "$match": { "name": "John Doe" } },
+    { "$match": { "name": "user_name" } },
     { "$unwind": "$addresses" },
     { 
         "$lookup": {
@@ -89,7 +93,39 @@ json
         "dish": "$nearestRestaurant.menu.dish",
         "price": "$nearestRestaurant.menu.price",
         "portion": "$nearestRestaurant.menu.portion"
-    }}
+    }},
+    {
+        "$match": { "name": "Gulab Jamun" }
+    },
+    {
+        "$lookup": {
+            "from": "fs.files",
+            "localField": "image_id",
+            "foreignField": "_id",
+            "as": "file_info"
+        }
+    },
+    {
+        "$unwind": "$file_info"
+    },
+    {
+        "$lookup": {
+            "from": "fs.chunks",
+            "localField": "file_info._id",
+            "foreignField": "files_id",
+            "as": "chunks"
+        }
+    },
+    {
+        "$project": {
+            "name": 1,
+            "file_info.filename": 1,
+            "file_info.uploadDate": 1,
+            "file_info.length": 1,
+            "file_info.chunkSize": 1,
+            "chunks.data": 1
+        }
+    }
 ]
 
 
@@ -99,7 +135,7 @@ Question 3:Suggest me something non veg?
 Query:
 json
 [
-    { "$match": { "name": "John Doe" } },
+    { "$match": { "name": "user_name" } },
     { "$unwind": "$addresses" },
     {
         "$lookup": {
@@ -146,7 +182,7 @@ Question 4: Suggest me something in veg.
 Query:
 json
 [
-    { "$match": { "name": "John Doe" } },
+    { "$match": { "name": "user_name" } },
     { "$unwind": "$addresses" },
     {
         "$lookup": {
@@ -158,8 +194,28 @@ json
                         "distance": {
                             "$sqrt": {
                                 "$sum": [
-                                    { "$pow": [{ "$subtract": [{ "$arrayElemAt": ["$googlePin.coordinates", 0] }, { "$arrayElemAt": [{ "$convert": { "input": { "$arrayElemAt": [{ "$split": ["$$userLocation", ","] }, 0] }, "to": "double" } } }] }, 2] },
-                                    { "$pow": [{ "$subtract": [{ "$arrayElemAt": ["$googlePin.coordinates", 1] }, { "$arrayElemAt": [{ "$convert": { "input": { "$arrayElemAt": [{ "$split": ["$$userLocation", ","] }, 1] }, "to": "double" } } }] }, 2] }
+                                    { 
+                                        "$pow": [
+                                            { 
+                                                "$subtract": [
+                                                    { "$arrayElemAt": ["$googlePin.coordinates", 0] }, 
+                                                    { "$arrayElemAt": [{ "$convert": { "input": { "$arrayElemAt": [{ "$split": ["$$userLocation", ","] }, 0] }, "to": "double" } }, 0] }
+                                                ] 
+                                            }, 
+                                            2
+                                        ] 
+                                    },
+                                    { 
+                                        "$pow": [
+                                            { 
+                                                "$subtract": [
+                                                    { "$arrayElemAt": ["$googlePin.coordinates", 1] }, 
+                                                    { "$arrayElemAt": [{ "$convert": { "input": { "$arrayElemAt": [{ "$split": ["$$userLocation", ","] }, 1] }, "to": "double" } }, 0] }
+                                                ] 
+                                            }, 
+                                            2
+                                        ] 
+                                    }
                                 ]
                             }
                         }
@@ -217,13 +273,14 @@ json
 ]
 
 
-Question 5: Ask user to confirm the and save the order to order collection.
+
+Question 5: Save the order to order collection on user's confirmation.
 
 Query:
 json
 [
   {
-    "$match": { "name": "John Doe" },
+    "$match": { "name": "user_name" },
     "$lookup": {
         "from": "restaurants",
         "let": { "userLocation": "$addresses.googlePin" },
@@ -353,7 +410,7 @@ Question 6: Tell me about my previous order.
 Query:
 json
 [
-    { "$match": { "name": "John Doe" } },
+    { "$match": { "name": "user_name" } },
     { "$lookup": {
         "from": "orders",
         "localField": "_id",
@@ -361,7 +418,7 @@ json
         "as": "orderDetails"
     }},
     { "$unwind": "$orderDetails" },
-    { "$sort": { "orderDetails.order_timestamp": -1 } },  // Sort by most recent orders
+    { "$sort": { "orderDetails.order_timestamp": -1 } }, 
     { "$project": {
         "_id": 0,
         "orderDetails": 1
@@ -372,7 +429,7 @@ Question 7: Tell me about my current order.
 Query:
 json
 [
-    { "$match": { "name": "John Doe" } },
+    { "$match": { "name": "user_name" } },
     { "$lookup": {
         "from": "orders",
         "localField": "_id",
@@ -380,16 +437,105 @@ json
         "as": "orderDetails"
     }},
     { "$unwind": "$orderDetails" },
-    { "$sort": { "orderDetails.order_timestamp": -1 } },  // Sort by most recent orders
-    { "$limit": 1 },  // Limit to the most recent order
+    { "$sort": { "orderDetails.order_timestamp": -1 } },  
+    { "$limit": 1 },  
     { "$project": {
         "_id": 0,
         "orderDetails": 1
     }}
 ]
 
-Question 8:
+Question 8: Tell name by contact or email .
 Query:
+[
+    {
+        $match: {
+            $or: [
+                { "contact": "contact" },
+                { "email": "email" }
+            ]
+        }
+    },
+    {
+        $project: {
+            _id: 0,
+            name: 1
+        }
+    },
+    {
+        $limit: 1
+    }
+]
+
+Question 8: Show image of dish or food.
+Query:
+[
+    {
+        "$match": { "name": "Gulab Jamun" }
+    },
+    {
+        "$lookup": {
+            "from": "food_images",
+            "localField": "_id",
+            "foreignField": "image_id",
+            "as": "image_info"
+        }
+    },
+    {
+        "$unwind": "$image_info"
+    },
+    {
+        "$lookup": {
+            "from": "fs.files",
+            "localField": "image_info.image_id",
+            "foreignField": "_id",
+            "as": "file_info"
+        }
+    },
+    {
+        "$unwind": "$file_info"
+    },
+    {
+        "$lookup": {
+            "from": "fs.chunks",
+            "localField": "file_info._id",
+            "foreignField": "files_id",
+            "as": "chunks"
+        }
+    },
+    {
+        "$project": {
+            "name": 1,
+            "file_info.filename": 1,
+            "file_info.uploadDate": 1,
+            "file_info.length": 1,
+            "file_info.chunkSize": 1,
+            "chunks.data": 1
+        }
+    }
+]
+
+Question 9: Save new user details.
+Query:
+[{
+    "insertOne": {
+        "document": {
+    "name": "Ramji",
+    "dob": "1990-05-15",
+    "email": "ramji.doe@example.com",
+    "addresses": [
+      {"address": "123 Work Street, Office Complex", "tag": "office"},
+      {"address": "456 Home Avenue, Residential Area", "tag": "home"}
+    ],
+    "foodChoices": "Non-Veg",
+    "foodPreferences": ["Chinese", "Italian"],
+    "healthConditions": ["Diabetes"],
+    "nonVegDays": ["Monday", "Thursday"]
+  }
+    }
+}
+]
+
 
 
 Each of these queries is designed to run within MongoDB's aggregation framework to extract specific information based on the user's questions.

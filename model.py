@@ -1,17 +1,16 @@
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough,RunnableSequence
+# from langchain_core.output_parsers import StrOutputParser
+# from langchain_core.runnables import RunnablePassthrough,RunnableSequence
 import streamlit as st
 from pymongo import MongoClient
 import urllib,io,json
 from langchain_anthropic import ChatAnthropic
 from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
-
 from pymongo.server_api import ServerApi
 from dotenv import load_dotenv
 import os
 
 load_dotenv()
+
 ANTHROPIC_API_KEY=os.getenv("ANTHROPIC_API_KEY")
 ATLAS_CONNECTION_STRING=os.getenv("ATLAS_CONNECTION_STRING")
 
@@ -19,6 +18,7 @@ llm=ChatAnthropic(model_name="claude-3-opus-20240229",temperature=0.0,api_key=AN
 
 client = MongoClient(ATLAS_CONNECTION_STRING, server_api=ServerApi('1'))
 # Send a ping to confirm a successful connection
+
 try:
     client.admin.command('ping')
     print("Pinged your deployment. You successfully connected to MongoDB!")
@@ -28,27 +28,25 @@ except Exception as e:
 db_name = "foodnest"
 db=client[db_name]
 
-users_collection = db['user']
-# restaurants_collection = db['restaurants']
-# orders_collection = db['orders']
-# food_images_collection = db['food_images']
-
 
 
 st.title("talk to MongoDB")
 st.write("ask anything and get answer")
 input=st.text_area("enter your question here")
 
-with io.open("sample.txt","r",encoding="utf-8")as f1:
-    sample=f1.read()
+with io.open("sample1.txt","r",encoding="utf-8")as f1:
+    sample1=f1.read()
     f1.close()
 
-prompt="""
-        you are a very intelligent AI assitasnt who is expert in identifying relevant questions fro user
-        from user and converting into nosql mongodb agggregation pipeline query.
+prompt1="""
+
+        You are a very intelligent AI assitasnt who is expert in identifying relevant questions from user
+        from user and converting into nosql mongodb agggregation pipeline query should be foramted in json.
         Note: You have to just return the query as to use in agggregation pipeline nothing else. Don't return any other thing
         Please use the below schema to write the mongodb queries , dont use any other queries.
+
        schema:
+
        This schema represents a food supplier company's database,where you have to act as an bot(waiter) to customer,
        the customer can talk to you in hindi, english or both. 
         
@@ -60,7 +58,7 @@ prompt="""
        **food_images Collection**: It stores _id,image_id and dish name where image_id is used to store the image file in binary mode and store it in GridFS, 
        which splits the file into chunks and saves it in fs.files and fs.chunks collections.
 
-This schema helps manage and streamline the company's operations, ensuring accurate tracking of user preferences, order details, and restaurant information. 
+       This schema helps manage and streamline the company's operations, ensuring accurate tracking of user preferences, order details, and restaurant information. 
        your job is to get python code for the user question
        Here’s a breakdown of its schema with descriptions for each field:
 
@@ -137,52 +135,86 @@ Below are several sample user questions related to the MongoDB document provided
 and the corresponding MongoDB aggregation pipeline queries that can be used to fetch the desired data.
 Use them wisely.
 
-sample_question: {sample}
-As an expert you must use them whenever required.
-Note: You have to just return the query nothing else. Don't return any additional text with the query.Please follow this strictly
+sample_question: {sample1}
+As an expert you must use this sample_question whenever required and also use your knowledge to rectify the errors.
+Note: You have to just return the query nothing else. Don't return any additional text with the query.Please follow this strictly.
 input:{question}
 output:
+
 """
 
 
 query_with_prompt=PromptTemplate(
-    template=prompt,
+    template=prompt1,
     input_variables=["question","sample"]
 )
 
-llmchain=LLMChain(llm=llm,prompt=query_with_prompt)
+# st.write(llm)
+llmchain = (
+query_with_prompt
+| llm
+)
 
+# Function to extract collection names from the pipeline
+def get_collection_names_from_pipeline(pipeline):
+    collection_names = list()
+    for stage in pipeline:
+        if "$lookup" in stage:
+            collection_names.append(stage["$lookup"]["from"])
 
+    if len(collection_names) == 0:
+        return "user"
+    
+    return collection_names[0]
 
-
+results=""
 if input is not None:
     button=st.button("Submit")
     if button:
         response=llmchain.invoke({
             "question":input,
-            "sample":sample
+            "sample":sample1
         })
-
         
         try:
             query=json.loads(response["text"])
-            results=users_collection.aggregate(query)
+            # Get the collection names from the pipeline
+            collection_names = get_collection_names_from_pipeline(query)
+            results=db[collection_names].aggregate(query)
         except:
             results="No data found!"
+
+with io.open("sample2.txt","r",encoding="utf-8")as f1:
+    sample2=f1.read()
+    f1.close()
+
+
+prompt2="""
+You are an intelligent system capable of understanding and converting MongoDB NoSQL queries formatted in JSON to natural language explanations. 
+Your task is to take a MongoDB NoSQL queries formatted in JSON and provide a clear and concise answer in natural language based on user question. 
+
+sample_question: {sample}
+As an expert you must use this sample_question whenever required and also use your knowledge to rectify the errors.
+Note: You have to just return answer in natural language based on user. Please follow this strictly.
+User's Question:{question}
+MongoDB Query (JSON):{query}
+output:
+
+"""
+
+
+answer_with_query=PromptTemplate(
+    template=prompt2,
+    input_variables=["sample","question","query"]
+)
+
+llmchain2= answer_with_query | llm
+
+response=llmchain2.invoke({
+            "sample":sample2,
+            "question":input,
+            "query": results
+        })         
             
-        for result in results:
-            st.write(result)
+st.write(response["text"])
 
-
-# prompt="""
-# You need to 
-
-# """
-
-
-# query_with_prompt=PromptTemplate(
-#     template=prompt,
-#     input_variables=["question","sample"]
-# )
-
-# llmchain=LLMChain(llm=llm,prompt=query_with_prompt)

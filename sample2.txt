@@ -1,0 +1,92 @@
+Below are several sample User's Question in natural language and MongoDB Query (JSON): and expected Output
+in natural language.
+Follow the examples below to understand the format and style expected.
+
+Example 1 
+User's Question: How do I find all users who are older than 30? 
+MongoDB Query (JSON):
+[
+    {
+        "$match": {
+            "age": { "$gt": 30 }
+        }
+    },
+    {
+        "$count": 50
+    }
+]
+
+Output: There are 50 users older than 30.
+
+Example 2
+User's Question: What can I have fast and tasty?
+MongoDB Query (JSON):
+
+[
+    { "$match": { "name": "John Doe" } },
+    { "$unwind": "$addresses" },
+    { 
+        "$lookup": {
+            "from": "restaurants",
+            "let": { "userLocation": "$addresses.googlePin" },
+            "pipeline": [
+                {
+                    "$addFields": {
+                        "distance": {
+                            "$sqrt": {
+                                "$sum": [
+                                    { "$pow": [{ "$subtract": [{ "$arrayElemAt": ["$googlePin.coordinates", 0] }, { "$arrayElemAt": [{ "$map": { "input": { "$split": ["$$userLocation", ","] }, "as": "coord", "in": { "$convert": { "input": "$$coord", "to": "double" } } } }, 0] }] }, 2] },
+                                    { "$pow": [{ "$subtract": [{ "$arrayElemAt": ["$googlePin.coordinates", 1] }, { "$arrayElemAt": [{ "$map": { "input": { "$split": ["$$userLocation", ","] }, "as": "coord", "in": { "$convert": { "input": "$$coord", "to": "double" } } } }, 1] }] }, 2] }
+                                ]
+                            }
+                        }
+                    }
+                },
+                { "$sort": { "distance": 1 } },
+                { "$limit": 1 }
+            ],
+            "as": "nearestRestaurant"
+        }
+    },
+    { "$unwind": "$nearestRestaurant" },
+    { "$unwind": "$nearestRestaurant.menu" },
+    { 
+        "$group": {
+            "_id": "$_id",
+            "nearestRestaurant": { "$first": "$nearestRestaurant" },
+            "suggestedDishes": { "$push": "$nearestRestaurant.menu" }
+        }
+    },
+    { 
+        "$project": {
+            "nearestRestaurant": 1,
+            "suggestedDishes": { "$slice": ["$suggestedDishes", 4] }
+        }
+    }
+]
+
+Output: You can have the following fast and tasty dishes from the nearest restaurant: Pizza, Burger, Pasta.
+
+Example 3
+User's Question: Save new user detail? 
+MongoDB Query (JSON):
+[{
+    "insertOne": {
+        "document": {
+    "name": "Ramji",
+    "dob": "1990-05-15",
+    "email": "ramji.doe@example.com",
+    "addresses": [
+      {"address": "123 Work Street, Office Complex", "tag": "office"},
+      {"address": "456 Home Avenue, Residential Area", "tag": "home"}
+    ],
+    "foodChoices": "Non-Veg",
+    "foodPreferences": ["Chinese", "Italian"],
+    "healthConditions": ["Diabetes"],
+    "nonVegDays": ["Monday", "Thursday"]
+  }
+    }
+}
+]
+
+**Note**: Make sure the Output must suffice the User's Question. 
