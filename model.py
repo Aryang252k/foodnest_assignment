@@ -1,20 +1,22 @@
 # from langchain_core.output_parsers import StrOutputParser
-# from langchain_core.runnables import RunnablePassthrough,RunnableSequence
+from langchain_core.runnables import RunnablePassthrough,RunnableSequence
 import streamlit as st
 from pymongo import MongoClient
 import urllib,io,json
-from langchain_anthropic import ChatAnthropic
-from langchain.prompts import PromptTemplate
+from langchain_core.runnables import Runnable
+from langchain_openai import OpenAI
+from langchain.prompts import PromptTemplate,ChatPromptTemplate
 from pymongo.server_api import ServerApi
 from dotenv import load_dotenv
 import os
 
 load_dotenv()
 
-ANTHROPIC_API_KEY=os.getenv("ANTHROPIC_API_KEY")
+OPEN_AI_API_KEY=os.getenv("OPEN_AI_API_KEY")
 ATLAS_CONNECTION_STRING=os.getenv("ATLAS_CONNECTION_STRING")
-
-llm=ChatAnthropic(model_name="claude-3-opus-20240229",temperature=0.0,api_key=ANTHROPIC_API_KEY)
+# api_key=OPEN_AI_API_KEY,organization='org-TO4u4wavOLSyW1cTGBaT4C2A'
+# model_name="gpt-3.5-turbo",api_key=OPEN_AI_API_KEY
+llm=OpenAI(api_key=OPEN_AI_API_KEY)
 
 client = MongoClient(ATLAS_CONNECTION_STRING, server_api=ServerApi('1'))
 # Send a ping to confirm a successful connection
@@ -146,14 +148,14 @@ output:
 
 query_with_prompt=PromptTemplate(
     template=prompt1,
-    input_variables=["question","sample"]
+    input_variables=["question","sample1"]
 )
 
+
+
+
 # st.write(llm)
-llmchain = (
-query_with_prompt
-| llm
-)
+llmchain=(query_with_prompt | llm)
 
 # Function to extract collection names from the pipeline
 def get_collection_names_from_pipeline(pipeline):
@@ -173,7 +175,7 @@ if input is not None:
     if button:
         response=llmchain.invoke({
             "question":input,
-            "sample":sample1
+            "sample1":sample1
         })
         
         try:
@@ -193,7 +195,7 @@ prompt2="""
 You are an intelligent system capable of understanding and converting MongoDB NoSQL queries formatted in JSON to natural language explanations. 
 Your task is to take a MongoDB NoSQL queries formatted in JSON and provide a clear and concise answer in natural language based on user question. 
 
-sample_question: {sample}
+sample_question: {sample2}
 As an expert you must use this sample_question whenever required and also use your knowledge to rectify the errors.
 Note: You have to just return answer in natural language based on user. Please follow this strictly.
 User's Question:{question}
@@ -203,15 +205,13 @@ output:
 """
 
 
-answer_with_query=PromptTemplate(
-    template=prompt2,
-    input_variables=["sample","question","query"]
-)
+answer_with_query=PromptTemplate(template=prompt2,input_variables=['query', 'question', 'sample2'])
 
-llmchain2= answer_with_query | llm
+
+llmchain2= (answer_with_query | llm)
 
 response=llmchain2.invoke({
-            "sample":sample2,
+            "sample2":sample2,
             "question":input,
             "query": results
         })         
