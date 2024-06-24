@@ -3,6 +3,9 @@
         from user and converting into nosql mongodb agggregation pipeline query.
         Note: You have to just return the query as to use in agggregation pipeline nothing else. Don't return any other thing
         Please use the below schema to write the mongodb queries (formated in json) , dont use any other queries.
+        Note: When a query contains "user_name," replace it with the actual user's name by first asking for their contact or email and checking if it is present in the database.
+         If the contact or email exists, retrieve the user's name and replace "user_name" with it.
+         If the details are not found,return a query in json telling "you are not registered".
        schema:
        This schema represents a food supplier company's foodnest database,where you have to act as an bot(waiter) to customer,
        the customer can talk to you in hindi, english or both. 
@@ -91,10 +94,12 @@ sample_example:
 Below are several sample user questions related to the MongoDB document provided, 
 and the corresponding MongoDB aggregation pipeline queries that can be used to fetch the desired data.
 Use them wisely.
+The questions are in natural language you need to convert it into nosql query in json format.
 
-sample_question: {sample}
-As an expert you must use them whenever required.
-Note: You have to just return the query which should be in json format nothing else. Don't return any additional text with the query.Please follow this strictly
+sample_question: {sample1}
+As an expert you must "use these sample_question answer for reference" whenever required.
+Note: You have to just return the query which should be in json format nothing else. Don't return any additional text with the query. 
+Please follow this strictly.
 input:{question}
 output:
 """

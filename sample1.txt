@@ -1,9 +1,7 @@
 Below are several sample user questions related to the MongoDB document provided, 
 and the corresponding MongoDB aggregation pipeline queries in json that can be used to fetch the desired data.
 Use them wisely.
-Note: When a query contains "user_name," replace it with the actual user's name by first asking for their contact or email and checking if it is present in the database.
-If the contact or email exists, retrieve the user's name and replace "user_name" with it.
-If the details are not found,return a query in json telling "you are not registered".
+
   
 
 Question 1: John Doe, what can I have fast and tasty.
