@@ -1,11 +1,9 @@
-Below are several sample User's Question in natural language and MongoDB Query (JSON): and expected Output
-in natural language.
-Follow the examples below to understand the format and style expected.
+Note: Your answer should not contain any MongoDB query or any unnecessary information.
 
-Example 1 
+Example 1:
 User's Question: How do I find all users who are older than 30? 
-MongoDB Query (JSON):
-[
+MongoDB Query :
+db.user.find([
     {
         "$match": {
             "age": { "$gt": 30 }
@@ -14,15 +12,15 @@ MongoDB Query (JSON):
     {
         "$count": 50
     }
-]
+])
 
 Output: There are 50 users older than 30.
 
-Example 2
+Example 2:
 User's Question: What can I have fast and tasty?
-MongoDB Query (JSON):
+MongoDB Query:
 
-[
+db.restaurants.aggregate([
     { "$match": { "name": "John Doe" } },
     { "$unwind": "$addresses" },
     { 
@@ -63,14 +61,14 @@ MongoDB Query (JSON):
             "suggestedDishes": { "$slice": ["$suggestedDishes", 4] }
         }
     }
-]
+])
 
 Output: You can have the following fast and tasty dishes from the nearest restaurant: Pizza, Burger, Pasta.
 
-Example 3
-User's Question: Save new user detail? 
-MongoDB Query (JSON):
-[{
+Example 3:
+User's Question: User's detail to save? 
+MongoDB Query:
+db.user.insertOne([{
     "insertOne": {
         "document": {
     "name": "Ramji",
@@ -87,6 +85,8 @@ MongoDB Query (JSON):
   }
     }
 }
-]
+])
+Output:
+Successfully saved the detail.
 
-**Note**: Make sure the Output must suffice the User's Question. 
+

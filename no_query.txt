@@ -1,0 +1,25 @@
+Note : These questions are those questions to which you don't have to create any query just return the question as it is.
+You also identify wether question is related to database or not, if not do the same. 
+this question can be in various format i.e capital , lower ,upper . So you need to identify them.
+Return the exactly same question as answer.
+
+Question 1: Hello 
+answer : Hello
+
+Question 2: Hiii 
+answer : Hiii
+
+Question 3: Good Morning 
+answer:Good Morning
+
+Question 4: Good Evening
+answer:Good Evening
+
+Question 5: How are you doing?
+answer: How are you doing?
+
+Question 6: Good morning 
+answer: Good morning
+
+Question 7: good morning 
+answer: good morning
