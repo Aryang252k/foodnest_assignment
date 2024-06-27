@@ -163,7 +163,7 @@ def final_response(question,query,history):
         prompt2=f1.read()
         f1.close()
 
-    llm=HuggingFaceEndpoint(repo_id=rep_id,max_new_tokens=4000,temperature=0.2,huggingfacehub_api_token=HUGGING_FACE_KEY)    
+    llm=HuggingFaceEndpoint(repo_id=rep_id,max_new_tokens=4000,temperature=0.3,huggingfacehub_api_token=HUGGING_FACE_KEY)    
     answer_with_query=PromptTemplate(template=prompt2,input_variables=['query',"history",'question', 'sample2'])
     llmchain= (answer_with_query | llm)
 
